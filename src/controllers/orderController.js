@@ -167,7 +167,7 @@ const sendEmail = async (to, subject, htmlContent, order) => {
   console.log(`Email configuration: User=${emailUser}, Password length=${emailPass ? emailPass.length : 'Not set'}`);
 
   try {
-    // Create a transporter with Gmail service instead of explicit SMTP for Vercel compatibility
+    // Modified transporter configuration for Vercel compatibility
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -177,18 +177,18 @@ const sendEmail = async (to, subject, htmlContent, order) => {
       tls: {
         rejectUnauthorized: false
       },
-      // Lower timeout values for serverless environment
+      // Reduced timeout values for serverless environment
       connectionTimeout: 5000, // 5 seconds
       greetingTimeout: 5000,   // 5 seconds
-      socketTimeout: 10000     // 10 seconds
+      socketTimeout: 8000      // 8 seconds (reduced from 10s to fit within Vercel's limits)
     });
     
-    // Send email with a promise timeout to prevent hanging
+    // Send email with a shorter timeout to prevent hanging in serverless environment
     const emailSendPromise = transporter.sendMail(mailOptions);
     
-    // Create a timeout promise (shorter timeout for serverless environment)
+    // Shorter timeout (8 seconds) to ensure it completes within Vercel's function limits
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Email sending timed out after 15 seconds')), 15000);
+      setTimeout(() => reject(new Error('Email sending timed out after 8 seconds')), 8000);
     });
     
     // Race the email sending against the timeout
@@ -200,7 +200,7 @@ const sendEmail = async (to, subject, htmlContent, order) => {
     console.error('Failed to send email:', error.message);
     console.error('Email error details:', JSON.stringify(error, null, 2));
     
-    // Save to file as backup - but use an asynchronous write to avoid blocking
+    // Save to file as backup - using writeFile (non-blocking) to avoid serverless timeout issues
     try {
       const emailQueueDir = path.join(__dirname, '../../email_queue');
       if (!fs.existsSync(emailQueueDir)) {
@@ -212,7 +212,8 @@ const sendEmail = async (to, subject, htmlContent, order) => {
       fs.writeFile(filename, JSON.stringify({
         ...mailOptions,
         orderInfo: order ? { id: order._id, totalPrice: order.totalPrice } : 'No order info',
-        errorDetail: error.message
+        errorDetail: error.message,
+        timestamp: new Date().toISOString()
       }, null, 2), (err) => {
         if (err) {
           console.error('Failed to save email to file:', err.message);

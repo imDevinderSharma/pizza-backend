@@ -55,6 +55,20 @@ app.get('/api/email-diagnostic', async (req, res) => {
   }
 });
 
+// Vercel-specific email diagnostic and fix
+app.get('/api/ensure-vercel-email', async (req, res) => {
+  try {
+    const vercelEmailFix = require('./ensureVercelEmail');
+    await vercelEmailFix(req, res);
+  } catch (error) {
+    console.error('Error in Vercel email fix route:', error);
+    res.status(500).json({ 
+      message: 'Failed to run Vercel email fix', 
+      error: error.message 
+    });
+  }
+});
+
 // Simple order notification viewer (no authentication for simplicity)
 app.get('/notifications', (req, res) => {
   const notificationsDir = path.join(__dirname, '../notifications');

@@ -10,6 +10,7 @@
     "test-vercel-email": "node src/vercelEmailTest.js",
     "process-emails": "node src/processEmailQueue.js",
     "email-diagnostic": "node src/fixVercelEmail.js",
+    "ensure-vercel-email": "node src/ensureVercelEmail.js",
     "generate-vapid": "node src/generateVapidKeys.js",
     "safe-start": "node killport.js && node src/app.js",
     "safe-dev": "node killport.js && nodemon src/app.js"
