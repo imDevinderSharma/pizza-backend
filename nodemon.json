@@ -1,0 +1,19 @@
+{
+  "ignore": [
+    ".git",
+    "node_modules/**/node_modules",
+    "notifications/*",
+    "notifications",
+    "email_queue/*",
+    "email_queue",
+    "*.json",
+    "!package.json",
+    "!package-lock.json"
+  ],
+  "verbose": true,
+  "watch": ["src/"],
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "ext": "js"
+} 

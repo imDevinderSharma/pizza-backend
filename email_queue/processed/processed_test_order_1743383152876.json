@@ -1,0 +1,6 @@
+{
+  "from": "\"Pizza Host Test\" <iamdevindersharma15122005@gmail.com>",
+  "to": "iamdevindersharma15122005@gmail.com",
+  "subject": "Test Order Email",
+  "html": "<div style=\"font-family: Arial; color: #d32f2f;\"><h1>Test Order Email</h1><p>This is a test order email.</p></div>"
+}

@@ -1,0 +1,6 @@
+{
+  "from": "\"Pizza Host Test\" <devindersharma15122005@gmail.com>",
+  "to": "devindersharma15122005@gmail.com",
+  "subject": "Pizza Host Email Test",
+  "html": "\n      <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;\">\n        <h1 style=\"color: #d32f2f; text-align: center;\">Email Test Successful!</h1>\n        <p>This is a test email from the Pizza Host application.</p>\n        <p>If you received this email, it means your email configuration is working correctly!</p>\n        <p>Time sent: 3/31/2025, 5:48:08 AM</p>\n      </div>\n    "
+}

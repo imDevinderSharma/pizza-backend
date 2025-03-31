@@ -1,0 +1,39 @@
+{
+  "id": "67eaa9f568e3435bc04db48e",
+  "timestamp": "2025-03-31T14:43:01.066Z",
+  "customer": {
+    "name": "Neesha Sharma",
+    "email": "neeshasharma212007@gmail.com",
+    "phone": "8534972119"
+  },
+  "deliveryAddress": {
+    "street": "Krishna Nagar",
+    "city": "Meerut",
+    "state": "UP",
+    "zipCode": "250001"
+  },
+  "items": [
+    {
+      "name": "Pizza #6603ff1a2d8a2f8e36a57c42",
+      "size": "medium",
+      "quantity": 2,
+      "price": 399
+    },
+    {
+      "name": "Pizza #6603ff1a2d8a2f8e36a57c41",
+      "size": "medium",
+      "quantity": 1,
+      "price": 349
+    },
+    {
+      "name": "Pizza #6603ff1a2d8a2f8e36a57c43",
+      "size": "large",
+      "quantity": 1,
+      "price": 529
+    }
+  ],
+  "totalPrice": 1726,
+  "paymentMethod": "cod",
+  "instructions": "Pizza ache se bana bhai, cheese daal dena...",
+  "read": false
+}

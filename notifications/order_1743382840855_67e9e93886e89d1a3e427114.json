@@ -1,0 +1,27 @@
+{
+  "id": "67e9e93886e89d1a3e427114",
+  "timestamp": "2025-03-31T01:00:40.855Z",
+  "customer": {
+    "name": "Unknown",
+    "email": "Unknown",
+    "phone": "8765456788"
+  },
+  "deliveryAddress": {
+    "street": "vtgy",
+    "city": "vhgyyy",
+    "state": "vbhgyy",
+    "zipCode": "245666"
+  },
+  "items": [
+    {
+      "name": "Pizza #6603ff1a2d8a2f8e36a57c41",
+      "size": "medium",
+      "quantity": 1,
+      "price": 349
+    }
+  ],
+  "totalPrice": 399,
+  "paymentMethod": "cod",
+  "instructions": "",
+  "read": false
+}
