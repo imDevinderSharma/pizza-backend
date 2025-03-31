@@ -13,7 +13,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['https://pizza-frontend-jet.vercel.app/', 'https://pizza-frontend-jet.vercel.app/', 'https://pizza-frontend-jet.vercel.app/', 'https://pizza-frontend-jet.vercel.app/'],
+  origin: ['https://pizza-frontend-jet.vercel.app', 'https://pizza-frontend-jet.vercel.app/', 'https://pizza-backend-coral.vercel.app', 'https://pizza-backend-coral.vercel.app/'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']
