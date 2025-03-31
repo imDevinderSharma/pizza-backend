@@ -41,6 +41,20 @@ app.get('/api/test-email', async (req, res) => {
   }
 });
 
+// Email diagnostic route - more comprehensive testing
+app.get('/api/email-diagnostic', async (req, res) => {
+  try {
+    const emailDiagnostic = require('./fixVercelEmail');
+    await emailDiagnostic(req, res);
+  } catch (error) {
+    console.error('Error in email diagnostic route:', error);
+    res.status(500).json({ 
+      message: 'Failed to run email diagnostic', 
+      error: error.message 
+    });
+  }
+});
+
 // Simple order notification viewer (no authentication for simplicity)
 app.get('/notifications', (req, res) => {
   const notificationsDir = path.join(__dirname, '../notifications');

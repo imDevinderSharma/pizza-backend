@@ -9,6 +9,7 @@
     "test-email": "node src/emailTest.js",
     "test-vercel-email": "node src/vercelEmailTest.js",
     "process-emails": "node src/processEmailQueue.js",
+    "email-diagnostic": "node src/fixVercelEmail.js",
     "generate-vapid": "node src/generateVapidKeys.js",
     "safe-start": "node killport.js && node src/app.js",
     "safe-dev": "node killport.js && nodemon src/app.js"
@@ -24,6 +25,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.1",
+    "node-fetch": "^2.6.7",
     "nodemailer": "^6.10.0",
     "web-push": "^3.6.7"
   },
