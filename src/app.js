@@ -474,17 +474,59 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!', error: err.message });
 });
 
-// Connect to MongoDB and start server
-const PORT = process.env.PORT || 5000;
+// Database connection function
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+    console.log(`Connected to MongoDB: ${conn.connection.host}`);
+    return conn;
+  } catch (error) {
+    console.error(`Error connecting to MongoDB: ${error.message}`);
+    process.exit(1);
+  }
+};
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
+// Start server
+const startServer = async () => {
+  try {
+    // Connect to the database
+    await connectDB();
+    
+    // Start the server
+    const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to connect to MongoDB', err);
-  }); 
+    
+    // Setup periodic email queue processing (only in development environment)
+    if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+      console.log('Setting up periodic email queue processor...');
+      // Check every 5 minutes for emails in the queue
+      setInterval(() => {
+        console.log('Running scheduled email queue check...');
+        try {
+          const emailQueueDir = path.join(__dirname, '../email_queue');
+          if (fs.existsSync(emailQueueDir)) {
+            const files = fs.readdirSync(emailQueueDir)
+              .filter(file => file.endsWith('.json') && !file.startsWith('processed_'));
+            
+            if (files.length > 0) {
+              console.log(`Found ${files.length} emails in queue. Processing...`);
+              // Run the process-emails script
+              require('./processEmailQueue');
+            } else {
+              console.log('No emails in queue.');
+            }
+          }
+        } catch (error) {
+          console.error('Error checking email queue:', error);
+        }
+      }, 5 * 60 * 1000); // Every 5 minutes
+    }
+  } catch (error) {
+    console.error(`Error starting server: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+startServer(); 

@@ -170,7 +170,7 @@ const sendEmail = async (to, subject, htmlContent, order) => {
   console.log(`Email configuration: User=${emailUser}, Password length=${emailPass ? emailPass.length : 'Not set'}`);
 
   try {
-    // Optimized transporter configuration for Vercel
+    // Use the same optimized configuration as the diagnostic endpoint
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -180,18 +180,18 @@ const sendEmail = async (to, subject, htmlContent, order) => {
       tls: {
         rejectUnauthorized: false
       },
-      // Ultra-reduced timeout values for serverless environment
-      connectionTimeout: 3000, // 3 seconds
-      greetingTimeout: 3000,   // 3 seconds
-      socketTimeout: 5000      // 5 seconds
+      // Shorter timeouts for Vercel environment
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000
     });
     
-    // Ultra-fast email sending with aggressive timeout
+    // Use timeout promise to prevent hanging
     const emailSendPromise = transporter.sendMail(mailOptions);
     
-    // Very short timeout (5 seconds) to ensure completion
+    // Use 10-second timeout, same as diagnostic endpoint
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Email sending timed out after 5 seconds')), 5000);
+      setTimeout(() => reject(new Error('Email sending timed out after 10 seconds')), 10000);
     });
     
     // Race the email sending against the timeout
@@ -202,39 +202,29 @@ const sendEmail = async (to, subject, htmlContent, order) => {
   } catch (error) {
     console.error('Failed to send email:', error.message);
     
-    // Only save to file if we're not in Vercel environment to avoid filesystem I/O
-    if (!process.env.VERCEL) {
-      try {
-        const emailQueueDir = path.join(__dirname, '../../email_queue');
-        if (!fs.existsSync(emailQueueDir)) {
-          fs.mkdirSync(emailQueueDir, { recursive: true });
-        }
-        
-        const filename = path.join(emailQueueDir, `email_${Date.now()}.json`);
-        // Use writeFile instead of writeFileSync to be non-blocking
-        fs.writeFile(filename, JSON.stringify({
-          ...mailOptions,
-          orderInfo: order ? { id: order._id, totalPrice: order.totalPrice } : 'No order info',
-          errorDetail: error.message,
-          timestamp: new Date().toISOString()
-        }, null, 2), (err) => {
-          if (err) {
-            console.error('Failed to save email to file:', err.message);
-          } else {
-            console.log(`Email saved to file: ${filename}`);
-          }
-        });
-      } catch (saveError) {
-        console.error('Failed to save email to file:', saveError.message);
+    // Save to file queue for both environments to ensure delivery
+    try {
+      const emailQueueDir = path.join(__dirname, '../../email_queue');
+      if (!fs.existsSync(emailQueueDir)) {
+        fs.mkdirSync(emailQueueDir, { recursive: true });
       }
-    } else {
-      // In Vercel, just log the error details for debugging
-      console.error('Email error in Vercel environment:', error);
-      console.error('Email details:', {
-        to,
-        subject,
-        orderInfo: order ? { id: order._id } : 'No order info'
+      
+      const filename = path.join(emailQueueDir, `email_${Date.now()}.json`);
+      // Use writeFile instead of writeFileSync to be non-blocking
+      fs.writeFile(filename, JSON.stringify({
+        ...mailOptions,
+        orderInfo: order ? { id: order._id, totalPrice: order.totalPrice } : 'No order info',
+        errorDetail: error.message,
+        timestamp: new Date().toISOString()
+      }, null, 2), (err) => {
+        if (err) {
+          console.error('Failed to save email to file:', err.message);
+        } else {
+          console.log(`Email saved to file: ${filename}`);
+        }
       });
+    } catch (saveError) {
+      console.error('Failed to save email to file:', saveError.message);
     }
     
     return { success: false, error: error.message };
@@ -432,7 +422,10 @@ const createOrder = async (req, res) => {
       }
 
       // Return success response
-      res.status(201).json(order);
+      res.status(201).json({
+        ...order.toObject(),
+        emailInfo: "If you don't receive an order confirmation email, visit /api/email-diagnostic endpoint to trigger email delivery"
+      });
     } else {
       res.status(400).json({ message: 'Invalid order data' });
     }
