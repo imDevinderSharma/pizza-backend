@@ -28,41 +28,90 @@ const createTransporter = async () => {
 // Send test email with detailed logging
 const sendTestEmail = async () => {
   console.log('Starting Vercel email test...');
+  console.log('Environment:', process.env.VERCEL ? 'Vercel' : 'Local');
   
   try {
-    const transporter = await createTransporter();
+    // Ultra-minimal transporter specifically for Vercel
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      // Ultra-minimal timeouts
+      connectionTimeout: 3000,
+      greetingTimeout: 3000,
+      socketTimeout: 5000
+    });
     
-    // Test email options
+    console.log('Transporter created successfully');
+    
+    // Try to verify SMTP connection with timeout
+    try {
+      console.log('Verifying SMTP connection...');
+      
+      const verifyPromise = transporter.verify();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SMTP verification timed out after 4 seconds')), 4000)
+      );
+      
+      await Promise.race([verifyPromise, timeoutPromise]);
+      console.log('✓ SMTP connection verified!');
+    } catch (error) {
+      console.error('✗ SMTP verification failed:', error.message);
+      return {
+        success: false,
+        stage: 'smtp_verification',
+        error: error.message
+      };
+    }
+    
+    // Test email options with minimal features
     const mailOptions = {
-      from: `"Pizza Host Vercel Test" <${process.env.EMAIL_USER || 'iamdevindersharma15122005@gmail.com'}>`,
-      to: process.env.ADMIN_EMAIL || 'iamdevindersharma15122005@gmail.com',
-      subject: 'Vercel Deployment Test Email',
+      from: `"Pizza Host Test" <${process.env.EMAIL_USER}>`,
+      to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+      subject: 'Vercel Email Test with Optimizations',
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
-          <h1 style="color: #d32f2f;">Vercel Email Test Successful</h1>
-          <p>This email confirms that the email functionality is working in the Vercel serverless environment.</p>
+          <h1 style="color: #d32f2f;">Vercel Email Test (Optimized)</h1>
+          <p>This email confirms that the optimized email functionality is working.</p>
           <p>Time: ${new Date().toISOString()}</p>
           <p>Environment: ${process.env.VERCEL ? 'Vercel Production' : 'Local Development'}</p>
         </div>
-      `
+      `,
+      // Disable unnecessary features
+      disableFileAccess: true,
+      disableUrlAccess: true
     };
     
     console.log(`Sending test email to: ${mailOptions.to}`);
-    const info = await transporter.sendMail(mailOptions);
     
-    console.log('Test email sent successfully from Vercel environment!');
+    // Send with very aggressive timeout
+    const sendPromise = transporter.sendMail(mailOptions);
+    const sendTimeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email sending timed out after 5 seconds')), 5000)
+    );
+    
+    const info = await Promise.race([sendPromise, sendTimeoutPromise]);
+    
+    console.log('✓ Test email sent successfully from Vercel environment!');
     console.log('Message ID:', info.messageId);
     
     return {
       success: true,
       messageId: info.messageId,
-      recipient: mailOptions.to
+      recipient: mailOptions.to,
+      stage: 'complete'
     };
   } catch (error) {
     console.error('Failed to send test email from Vercel:', error);
     return {
       success: false,
-      error: error.message
+      error: error.message,
+      stage: 'unknown'
     };
   }
 };

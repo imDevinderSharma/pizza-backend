@@ -30,6 +30,7 @@ const verifyEnvironmentVariables = () => {
 // Create the most Vercel-friendly transporter configuration
 const createVercelTransporter = async () => {
   try {
+    // Minimal, efficient transporter for Vercel
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -39,7 +40,7 @@ const createVercelTransporter = async () => {
       tls: {
         rejectUnauthorized: false
       },
-      // Minimal timeout values
+      // Ultra-minimal timeout values for Vercel
       connectionTimeout: 3000,
       greetingTimeout: 3000,
       socketTimeout: 5000
@@ -52,14 +53,50 @@ const createVercelTransporter = async () => {
   }
 };
 
-// Run a quick SMTP verification
+// Very fast SMTP connection verification
 const verifySmtpConnection = async (transporter) => {
   try {
-    await transporter.verify();
-    console.log('SMTP connection verified successfully');
+    // Set a shorter timeout for verification
+    const verifyPromise = transporter.verify();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('SMTP verification timed out after 4 seconds')), 4000)
+    );
+    
+    await Promise.race([verifyPromise, timeoutPromise]);
+    console.log('✓ SMTP connection verified on Vercel!');
     return { success: true };
   } catch (error) {
-    console.error('SMTP verification failed:', error.message);
+    console.error('✗ SMTP verification failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+// Fast email sending optimized for Vercel
+const sendVercelEmail = async (transporter, to, subject, html) => {
+  try {
+    // Minimal email options
+    const mailOptions = {
+      from: `"Pizza Host" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      html,
+      // Disable unnecessary features
+      disableFileAccess: true,
+      disableUrlAccess: true
+    };
+    
+    // Ultra-fast email sending with timeout
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email sending timed out after 5 seconds')), 5000)
+    );
+    
+    const info = await Promise.race([sendPromise, timeoutPromise]);
+    console.log('✓ Email sent successfully via Vercel!');
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('✗ Failed to send email via Vercel:', error.message);
+    // Instead of saving to file here (which is slow), just log the error
     return { success: false, error: error.message };
   }
 };
