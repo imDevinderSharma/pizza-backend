@@ -14,6 +14,10 @@ Email is configured through the `.env` file with these variables:
 EMAIL_USER=devindersharma15122005@gmail.com
 EMAIL_PASSWORD=your_app_password
 ADMIN_EMAIL=your_notification_email@example.com
+
+
+
+vbgy
 ```
 
 If ADMIN_EMAIL is not specified, the system will use EMAIL_USER as the recipient for order notifications.
