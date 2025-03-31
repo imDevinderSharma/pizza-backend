@@ -44,6 +44,27 @@ app.get('/api/test-email', async (req, res) => {
 // Email diagnostic route - more comprehensive testing
 app.get('/api/email-diagnostic', async (req, res) => {
   try {
+    // First, try to process any emails in the queue
+    console.log('Processing email queue as part of diagnostic check...');
+    try {
+      const emailQueueDir = path.join(__dirname, '../email_queue');
+      if (fs.existsSync(emailQueueDir)) {
+        const files = fs.readdirSync(emailQueueDir)
+          .filter(file => file.endsWith('.json') && !file.startsWith('processed_'));
+        
+        if (files.length > 0) {
+          console.log(`Found ${files.length} emails in queue. Processing...`);
+          // Process the email queue
+          await require('./processEmailQueue')();
+        } else {
+          console.log('No emails in queue to process.');
+        }
+      }
+    } catch (queueError) {
+      console.error('Error processing email queue:', queueError);
+    }
+    
+    // Then run the regular email diagnostic
     const emailDiagnostic = require('./fixVercelEmail');
     await emailDiagnostic(req, res);
   } catch (error) {

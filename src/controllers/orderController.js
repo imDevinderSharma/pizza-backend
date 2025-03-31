@@ -169,66 +169,80 @@ const sendEmail = async (to, subject, htmlContent, order) => {
   const emailUser = process.env.EMAIL_USER || 'iamdevindersharma15122005@gmail.com';
   console.log(`Email configuration: User=${emailUser}, Password length=${emailPass ? emailPass.length : 'Not set'}`);
 
-  try {
-    // Use the same optimized configuration as the diagnostic endpoint
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: emailUser,
-        pass: emailPass,
-      },
-      tls: {
-        rejectUnauthorized: false
-      },
-      // Shorter timeouts for Vercel environment
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 10000
-    });
-    
-    // Use timeout promise to prevent hanging
-    const emailSendPromise = transporter.sendMail(mailOptions);
-    
-    // Use 10-second timeout, same as diagnostic endpoint
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Email sending timed out after 10 seconds')), 10000);
-    });
-    
-    // Race the email sending against the timeout
-    const info = await Promise.race([emailSendPromise, timeoutPromise]);
-    
-    console.log('Email sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Failed to send email:', error.message);
-    
-    // Save to file queue for both environments to ensure delivery
+  // Create the transporter with best configuration for all environments
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: emailUser,
+      pass: emailPass,
+    },
+    tls: {
+      rejectUnauthorized: false
+    },
+    // Optimized timeouts
+    connectionTimeout: 10000,  // 10 seconds
+    greetingTimeout: 10000,    // 10 seconds
+    socketTimeout: 15000       // 15 seconds
+  });
+
+  // Try to send the email with up to 2 retries
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const emailQueueDir = path.join(__dirname, '../../email_queue');
-      if (!fs.existsSync(emailQueueDir)) {
-        fs.mkdirSync(emailQueueDir, { recursive: true });
+      if (attempt > 0) {
+        console.log(`Retrying email send (attempt ${attempt + 1}/3)...`);
       }
       
-      const filename = path.join(emailQueueDir, `email_${Date.now()}.json`);
-      // Use writeFile instead of writeFileSync to be non-blocking
-      fs.writeFile(filename, JSON.stringify({
-        ...mailOptions,
-        orderInfo: order ? { id: order._id, totalPrice: order.totalPrice } : 'No order info',
-        errorDetail: error.message,
-        timestamp: new Date().toISOString()
-      }, null, 2), (err) => {
-        if (err) {
-          console.error('Failed to save email to file:', err.message);
-        } else {
-          console.log(`Email saved to file: ${filename}`);
-        }
+      // Use timeout promise to prevent hanging
+      const emailSendPromise = transporter.sendMail(mailOptions);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Email sending timed out after 15 seconds')), 15000);
       });
-    } catch (saveError) {
-      console.error('Failed to save email to file:', saveError.message);
+      
+      // Race the email sending against the timeout
+      const info = await Promise.race([emailSendPromise, timeoutPromise]);
+      
+      console.log(`Email sent successfully (attempt ${attempt + 1}):`, info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(`Email sending failed (attempt ${attempt + 1}):`, error.message);
+      lastError = error;
+      
+      // If it's not a timeout error, wait briefly before retrying
+      if (!error.message.includes('timed out')) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+      }
+    }
+  }
+  
+  console.error('All email sending attempts failed');
+  
+  // If all attempts failed, save to email queue
+  try {
+    const emailQueueDir = path.join(__dirname, '../../email_queue');
+    if (!fs.existsSync(emailQueueDir)) {
+      fs.mkdirSync(emailQueueDir, { recursive: true });
     }
     
-    return { success: false, error: error.message };
+    const filename = path.join(emailQueueDir, `email_${Date.now()}.json`);
+    // Use writeFile instead of writeFileSync to be non-blocking
+    fs.writeFile(filename, JSON.stringify({
+      ...mailOptions,
+      orderInfo: order ? { id: order._id, totalPrice: order.totalPrice } : 'No order info',
+      errorDetail: lastError ? lastError.message : 'Multiple sending attempts failed',
+      timestamp: new Date().toISOString()
+    }, null, 2), (err) => {
+      if (err) {
+        console.error('Failed to save email to file:', err.message);
+      } else {
+        console.log(`Email saved to file: ${filename}`);
+      }
+    });
+  } catch (saveError) {
+    console.error('Failed to save email to file:', saveError.message);
   }
+  
+  return { success: false, error: lastError ? lastError.message : 'Multiple sending attempts failed' };
 };
 
 // @desc    Create new order
@@ -388,43 +402,43 @@ const createOrder = async (req, res) => {
       const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || 'iamdevindersharma15122005@gmail.com';
       console.log(`Sending order notification to admin email: ${adminEmail}`);
       
-      // Try to send email to the admin (don't wait for it)
-      sendEmail(adminEmail, `New Pizza Order #${order._id}`, htmlContent, order)
-        .then(result => {
-          if (result.success) {
-            console.log('Order email sent successfully to admin');
-          } else {
-            console.log('Admin order email failed but was saved to queue');
-          }
-        })
-        .catch(err => {
-          console.error('Error in admin email process:', err);
-        });
-
-      // Also send a confirmation email to the customer
+      // Use async/await to ensure emails are sent before responding
+      let adminEmailResult = {success: false};
+      let customerEmailResult = {success: false};
+      
+      try {
+        // Send email to admin
+        adminEmailResult = await sendEmail(adminEmail, `New Pizza Order #${order._id}`, htmlContent, order);
+        console.log(adminEmailResult.success ? 
+          'Order email sent successfully to admin' : 
+          'Admin order email failed but was saved to queue');
+      } catch (emailError) {
+        console.error('Error in admin email process:', emailError);
+      }
+      
+      // Send confirmation email to the customer if we have their email
       if (user && user.email) {
-        console.log(`Sending order confirmation email to customer: ${user.email}`);
-        const customerSubject = `Your Pizza Host Order Confirmation #${order._id}`;
-        // You might want to slightly customize htmlContent for the customer later
-        sendEmail(user.email, customerSubject, htmlContent, order)
-          .then(result => {
-            if (result.success) {
-              console.log(`Order confirmation email sent successfully to ${user.email}`);
-            } else {
-              console.log(`Customer confirmation email for ${user.email} failed but was saved to queue`);
-            }
-          })
-          .catch(err => {
-            console.error(`Error sending confirmation email to ${user.email}:`, err);
-          });
+        try {
+          console.log(`Sending order confirmation email to customer: ${user.email}`);
+          const customerSubject = `Your Pizza Host Order Confirmation #${order._id}`;
+          customerEmailResult = await sendEmail(user.email, customerSubject, htmlContent, order);
+          console.log(customerEmailResult.success ?
+            `Order confirmation email sent successfully to ${user.email}` :
+            `Customer confirmation email for ${user.email} failed but was saved to queue`);
+        } catch (emailError) {
+          console.error(`Error sending confirmation email to ${user.email}:`, emailError);
+        }
       } else {
         console.log('Could not send confirmation email: Customer email not found.');
       }
 
-      // Return success response
+      // Return success response with email status
       res.status(201).json({
         ...order.toObject(),
-        emailInfo: "If you don't receive an order confirmation email, visit /api/email-diagnostic endpoint to trigger email delivery"
+        emailSent: adminEmailResult.success || customerEmailResult.success,
+        emailInfo: adminEmailResult.success || customerEmailResult.success ? 
+          "Order confirmation email sent successfully" : 
+          "If you don't receive an order confirmation email, visit /api/email-diagnostic endpoint to trigger email delivery"
       });
     } else {
       res.status(400).json({ message: 'Invalid order data' });
