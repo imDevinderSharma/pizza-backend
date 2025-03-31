@@ -11,5 +11,11 @@
         "dest": "src/app.js",
         "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
       }
-    ]
+    ],
+    "functions": {
+      "src/app.js": {
+        "memory": 1024,
+        "maxDuration": 10
+      }
+    }
   }

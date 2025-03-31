@@ -167,11 +167,9 @@ const sendEmail = async (to, subject, htmlContent, order) => {
   console.log(`Email configuration: User=${emailUser}, Password length=${emailPass ? emailPass.length : 'Not set'}`);
 
   try {
-    // Create a transporter with explicit SMTP configuration
+    // Create a transporter with Gmail service instead of explicit SMTP for Vercel compatibility
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, // Use SSL
+      service: 'gmail',
       auth: {
         user: emailUser,
         pass: emailPass,
@@ -179,18 +177,18 @@ const sendEmail = async (to, subject, htmlContent, order) => {
       tls: {
         rejectUnauthorized: false
       },
-      // Add timeout options to speed up connection failures
-      connectionTimeout: 10000, // 10 seconds
-      greetingTimeout: 10000,   // 10 seconds
-      socketTimeout: 15000      // 15 seconds
+      // Lower timeout values for serverless environment
+      connectionTimeout: 5000, // 5 seconds
+      greetingTimeout: 5000,   // 5 seconds
+      socketTimeout: 10000     // 10 seconds
     });
     
     // Send email with a promise timeout to prevent hanging
     const emailSendPromise = transporter.sendMail(mailOptions);
     
-    // Create a timeout promise
+    // Create a timeout promise (shorter timeout for serverless environment)
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Email sending timed out after 30 seconds')), 30000);
+      setTimeout(() => reject(new Error('Email sending timed out after 15 seconds')), 15000);
     });
     
     // Race the email sending against the timeout
@@ -200,6 +198,7 @@ const sendEmail = async (to, subject, htmlContent, order) => {
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('Failed to send email:', error.message);
+    console.error('Email error details:', JSON.stringify(error, null, 2));
     
     // Save to file as backup - but use an asynchronous write to avoid blocking
     try {
@@ -210,7 +209,11 @@ const sendEmail = async (to, subject, htmlContent, order) => {
       
       const filename = path.join(emailQueueDir, `email_${Date.now()}.json`);
       // Use writeFile instead of writeFileSync to be non-blocking
-      fs.writeFile(filename, JSON.stringify(mailOptions, null, 2), (err) => {
+      fs.writeFile(filename, JSON.stringify({
+        ...mailOptions,
+        orderInfo: order ? { id: order._id, totalPrice: order.totalPrice } : 'No order info',
+        errorDetail: error.message
+      }, null, 2), (err) => {
         if (err) {
           console.error('Failed to save email to file:', err.message);
         } else {

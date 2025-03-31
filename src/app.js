@@ -25,6 +25,21 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/pizzas', require('./routes/pizzaRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+
+// Email test route for Vercel environment
+app.get('/api/test-email', async (req, res) => {
+  try {
+    const vercelEmailTest = require('./vercelEmailTest');
+    await vercelEmailTest(req, res);
+  } catch (error) {
+    console.error('Error in email test route:', error);
+    res.status(500).json({ 
+      message: 'Failed to run email test', 
+      error: error.message 
+    });
+  }
+});
 
 // Simple order notification viewer (no authentication for simplicity)
 app.get('/notifications', (req, res) => {
