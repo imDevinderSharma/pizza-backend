@@ -60,7 +60,7 @@ App passwords are required when using Gmail:
 
 After deploying the updates to Vercel, run the diagnostic:
 
-1. Visit: `https://pizza-backend-coral.vercel.app/api/email-diagnostic`
+1. Visit: `https://pizza-backend-xi.vercel.app/api/email-diagnostic`
 2. Check the JSON response for detailed diagnostic information
 3. Review Vercel function logs for additional details
 
